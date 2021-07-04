@@ -148,24 +148,28 @@
 (pop)
 
 ; Mapping over an array (z3 only)
+#ifdef z3
 (push)
 (declare-const s (Array Int Bool))
 (declare-fun f (Bool) Bool)
 (assert (select s 0))
 (assert (not (select s 1)))
-;(assert (= ((_ map not) s) ((_ map f) s)))
-;(check-sat)
-;(get-model)
+(assert (= ((_ map not) s) ((_ map f) s)))
+(check-sat)
+(get-model)
 (pop)
+#endif
 
 ; Sets (cvc4 only)
+#ifndef z3
 (push)
-;(declare-const r (Set Int))
-;(declare-const s (Set Int))
-;(declare-const t (Set Int))
-;(assert (not (= (union (union r s) t) (union r (union s t)))))
-;(check-sat)
+(declare-const r (Set Int))
+(declare-const s (Set Int))
+(declare-const t (Set Int))
+(assert (not (= (union (union r s) t) (union r (union s t)))))
+(check-sat)
 (pop)
+#endif
 
 ; Can represent sets with maps into Bool:
 (push)
@@ -237,15 +241,17 @@
 (pop)
 ; (∀ s t r, (s ∪ t) # r <=> (s # r) ∧ (t # r))
 (push)
-(assert (not (forall ((s (MySet Int)) (t (MySet Int)) (r (MySet Int)))
+(assert (not
+  (forall ((s (MySet Int)) (t (MySet Int)) (r (MySet Int)))
   (= (disjoint (cup s t) r) (and (disjoint s r) (disjoint t r))))))
 (check-sat)
 (pop)
 ; (∀ r s t u v, (r ∪ s ∪ t) # (u ∪ v) <=> r#u ∧ r#v ∧ s#u ∧ s#v ∧ t#u ∧ t#v)
 ; cvc4 can solve this but z3 segfaults
+#ifndef z3
 (push)
-(assert (not (forall
-  ((r (MySet Int)) (s (MySet Int)) (t (MySet Int)) (u (MySet Int)) (v (MySet Int)))
+(assert (not
+  (forall ((r (MySet Int)) (s (MySet Int)) (t (MySet Int)) (u (MySet Int)) (v (MySet Int)))
   (= (disjoint (cup (cup r s) t) (cup u v))
      (and
        (disjoint r u)
@@ -255,6 +261,23 @@
        (disjoint t u)
        (disjoint t v)
 )))))
-;(check-sat)
+(check-sat)
 (pop)
+#endif
 (pop)
+
+(push)
+; ∀ A, let append (xs ys : list A) = .. in
+(declare-sort A 0)
+(declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
+(define-fun-rec append ((xs MyList) (ys MyList)) MyList
+  (match xs (
+    ((mycons x xs) (mycons x (append xs ys)))
+    (mynil ys))))
+; ∀ x xs ys, append (x ∷ xs) ys = x ∷ append xs ys
+(assert (not
+  (forall ((x A) (xs MyList) (ys MyList))
+  (= (append (mycons x xs) ys) (mycons x (append xs ys))))))
+(check-sat)
+(pop)
+
