@@ -263,21 +263,6 @@
   #endif
 (pop)
 
-; Can we prove the induction scheme for lists?
-; ∀ A (f : List A → bool),
-(push)
-  (declare-sort A 0)
-  (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
-  (declare-fun f (MyList) Bool)
-  ; f [] →
-  (assert (f mynil))
-  ; (∀ x xs, f xs → f (x ∷ xs)) →
-  (assert (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs)))))
-  ; z3 hangs, cvc4 returns unknown: ∀ xs, f xs
-  (assert (not (forall ((xs MyList)) (f xs))))
-  ;(check-sat)
-(pop)
-
 (push)
   ; ∀ A, let append (xs ys : list A) = .. in
   (declare-sort A 0)
@@ -406,5 +391,38 @@
     ; Now, both solvers can prove ∀ xs, f xs
     (push) (assert (not (forall ((xs MyList)) (f xs)))) (check-sat) (pop)
   (pop)
+  ; If just assert append-assoc theorem and check for sat,
+  ; z3 can prove it but cvc4 returns unknown
+  (push)
+    (assert (forall ((xs MyList) (ys MyList) (zs MyList))
+      (= (append (append xs ys) zs) (append xs (append ys zs)))))
+    (check-sat)
+  (pop)
 (pop)
 
+; So z3 somehow "knows" about induction.
+; But it fails to prove the standard induction principle for lists:
+; ∀ A (f : List A → bool),
+(push)
+  (declare-sort A 0)
+  (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
+  (declare-fun f (MyList) Bool)
+  ; f [] →
+  (assert (f mynil))
+  ; (∀ x xs, f xs → f (x ∷ xs)) →
+  (assert (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs)))))
+  ; z3 hangs, cvc4 returns unknown: ∀ xs, f xs
+  (assert (not (forall ((xs MyList)) (f xs))))
+  ;(check-sat)
+(pop)
+
+; Does not help if we try to prove it by asserting it and checking for sat:
+(push)
+  (declare-datatype IntList ((mynil) (mycons (head Int) (tail IntList))))
+  (declare-fun f (IntList) Bool)
+  (assert (forall ((f (Array IntList Bool)) (xs IntList)) (=>
+    (select f mynil)
+    (forall ((x Int) (xs IntList)) (=> (select f xs) (select f (mycons x xs))))
+    (select f xs))))
+  (check-sat) ; both solvers return unknown
+(pop)
