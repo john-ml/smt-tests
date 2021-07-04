@@ -1,68 +1,68 @@
 (set-logic ALL)
 
 ; ∀ x y, ¬ (x < y < x)
-(push)
+(push 1)
   (declare-const x Int)
   (declare-const y Int)
   (assert (< x y x))
   (check-sat)
-(pop)
+(pop 1)
 
 ; ∀ f, (∀ x y, f x = f y → x = y) → f 3 = f 4 → 3 = 4
-(push)
+(push 1)
   (declare-fun f (Int) Int)
   (assert (forall ((x Int) (y Int)) (=> (= (f x) (f y)) (= x y))))
   (assert (= (f 3) (f 4)))
   (assert (not (= 3 4)))
   (check-sat)
-(pop)
+(pop 1)
 
 ; ∀ A B (s : A → B) (x : A), s[x ← s[x]] = s
-(push)
+(push 1)
   (declare-sort A 0)
   (declare-sort B 0)
   (declare-const s (Array A B))
   (declare-const x A)
   (assert (not (= (store s x (select s x)) s)))
   (check-sat)
-(pop)
+(pop 1)
 
 ; ∀ A B (s : A → B) (x : A),
-(push)
+(push 1)
   (declare-sort A 0)
   (declare-sort B 0)
   (declare-const s (Array A B))
   (declare-const x A)
   ; s[x ← s[x]] = s ∧
-  (push)
+  (push 1)
     (assert (not (= (store s x (select s x)) s)))
     (check-sat)
-  (pop)
+  (pop 1)
   ; (∀ v, s[x ← v][x] = v) ∧
-  (push)
+  (push 1)
     (declare-const v B)
     (assert (not (= (select (store s x v) x) v)))
     (check-sat)
-  (pop)
+  (pop 1)
   ; (∀ v w, s[x ← v][x ← w] = s[x ← w]) ∧
-  (push)
+  (push 1)
     (declare-const v B)
     (declare-const w B)
     (assert (not (= (store (store s x v) x w) (store s x w))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; (∀ v w, s[x ← v] = s[x ← w] → v = w)
-  (push)
+  (push 1)
     (declare-const v B)
     (declare-const w B)
     (assert (= (store s x v) (store s x w)))
     (assert (not (= v w)))
     (check-sat)
-  (pop)
-(pop)
+  (pop 1)
+(pop 1)
 
 ; ∀ A B C D,
-(push)
+(push 1)
   (declare-sort A 0)
   (declare-sort B 0)
   (declare-sort C 0)
@@ -90,10 +90,10 @@
     (= (composeACD f (composeABC g h))
        (composeABD (composeBCD f g) h))))
   (check-sat)
-(pop)
+(pop 1)
 
 ; ∀ A,
-(push)
+(push 1)
   (declare-sort A 0)
   ; let xs ∈ MyList ∷= [] | x ∷ xs in
   (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
@@ -106,23 +106,23 @@
   (declare-const id (Array A A))
   (assert (forall ((x A)) (= (select id x) x)))
   ; Hangs: ∀ xs, map id xs = xs
-  (push)
+  (push 1)
     (declare-const xs MyList)
     (assert (not (= (mymap id xs) xs)))
     ; (check-sat)
-  (pop)
+  (pop 1)
   ; Base case: map id [] = []
-  (push) (assert (not (= (mymap id mynil) mynil))) (check-sat) (pop)
+  (push 1) (assert (not (= (mymap id mynil) mynil))) (check-sat) (pop 1)
   ; Inductive case: ∀ x xs, map id xs = xs → map id (x ∷ xs) = x ∷ xs
-  (push)
+  (push 1)
     (declare-const x A)
     (declare-const xs MyList)
     (assert (= (mymap id xs) xs))
     (assert (not (= (mymap id (mycons x xs)) (mycons x xs))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; Strong inductive case: ∀ x xs, (∀ ys, |ys| < |xs| → map id ys = ys) → map id (x ∷ xs) = x ∷ xs
-  (push)
+  (push 1)
     (declare-const x A)
     (declare-const xs MyList)
     (define-fun-rec len ((xs MyList)) Int
@@ -132,21 +132,23 @@
     (assert (forall ((ys MyList)) (=> (< (len ys) (len xs)) (= (mymap id ys) ys))))
     (assert (not (= (mymap id (mycons x xs)) (mycons x xs))))
     (check-sat)
-  (pop)
-(pop)
+  (pop 1)
+(pop 1)
 
 ; Const arrays
-(push)
+#ifndef alt_ergo
+(push 1)
   (declare-const s (Array Int Bool))
   (declare-fun f (Bool) Bool)
   (assert (= s ((as const (Array Int Bool)) false)))
   (assert (not (= (select s 0) false)))
   (check-sat)
-(pop)
+(pop 1)
+#endif
 
 ; Mapping over an array (z3 only)
 #ifdef z3
-(push)
+(push 1)
   (declare-const s (Array Int Bool))
   (declare-fun f (Bool) Bool)
   (assert (select s 0))
@@ -154,20 +156,22 @@
   (assert (= ((_ map not) s) ((_ map f) s)))
   (check-sat)
   (get-model)
-(pop)
+(pop 1)
 #endif
 
 ; Sets
-(push)
+#ifndef alt_ergo
+(push 1)
   (declare-const r (Set Int))
   (declare-const s (Set Int))
   (declare-const t (Set Int))
   (assert (not (= (union (union r s) t) (union r (union s t)))))
   (check-sat)
-(pop)
+(pop 1)
+#endif
 
 ; Can represent sets with maps into Bool:
-(push)
+(push 1)
   ; let MySet A = A → Bool in
   (define-sort MySet (A) (Array A Bool))
   ; let s ∪ t = λx. s[x] ∨ t[x] in
@@ -187,63 +191,63 @@
   (declare-const s (MySet Int))
   (declare-const t (MySet Int))
   ; ((r ∪ s) ∪ t = r ∪ (s ∪ t)) ∧
-  (push)
+  (push 1)
     (assert (not (= (cup (cup r s) t) (cup r (cup s t)))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; ((r ∩ s) ∩ t = r ∩ (s ∩ t)) ∧
-  (push)
+  (push 1)
     (assert (not (= (cap (cap r s) t) (cap r (cap s t)))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; ((r ∪ s) ∩ t = (r ∩ t) ∪ (s ∩ t)) ∧
-  (push)
+  (push 1)
     (assert (not (= (cap (cup r s) t) (cup (cap r t) (cap s t)))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; (r ⊆ s → s ⊆ t → r ⊆ t) ∧
-  (push)
+  (push 1)
     (assert (forall ((x Int)) (=> (select r x) (select s x))))
     (assert (forall ((x Int)) (=> (select s x) (select t x))))
     (declare-const x Int)
     (assert (select r x))
     (assert (not (select t x)))
     (check-sat)
-  (pop)
+  (pop 1)
   ; Alternatively, we can also define (⊆) as a predicate.
   ; let r ⊆ s = ∀ x. r[x] → s[x] in
   (define-fun subseteq ((s (MySet Int)) (t (MySet Int))) Bool
     (forall ((x Int)) (=> (select s x) (select t x))))
   ; (r ⊆ s → s ⊆ t → r ⊆ t) ∧
-  (push)
+  (push 1)
     (assert (subseteq r s))
     (assert (subseteq s t))
     (assert (not (subseteq s t)))
     (check-sat)
-  (pop)
+  (pop 1)
   ; let s # t = λx. ¬ (s[x] ∧ t[x]) in
   (define-fun disjoint ((s (MySet Int)) (t (MySet Int))) Bool
     (forall ((x Int)) (not (and (select s x) (select t x)))))
   ; (s # t <=> t # s) ∧
-  (push)
+  (push 1)
     (assert (not (= (disjoint s t) (disjoint t s))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; ((s ∪ t) # r <=> (s # r) ∧ (t # r)) ∧
-  (push)
+  (push 1)
     (assert (not (= (disjoint (cup s t) r) (and (disjoint s r) (disjoint t r)))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; (∀ s t r, (s ∪ t) # r <=> (s # r) ∧ (t # r))
-  (push)
+  (push 1)
     (assert (not
       (forall ((s (MySet Int)) (t (MySet Int)) (r (MySet Int)))
       (= (disjoint (cup s t) r) (and (disjoint s r) (disjoint t r))))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; (∀ r s t u v, (r ∪ s ∪ t) # (u ∪ v) <=> r#u ∧ r#v ∧ s#u ∧ s#v ∧ t#u ∧ t#v)
   ; cvc4 can solve this but z3 returns unknown
-  (push)
+  (push 1)
     (assert (not
       (forall ((r (MySet Int)) (s (MySet Int)) (t (MySet Int)) (u (MySet Int)) (v (MySet Int)))
       (= (disjoint (cup (cup r s) t) (cup u v))
@@ -256,10 +260,10 @@
            (disjoint t v)
     )))))
     (check-sat)
-  (pop)
-(pop)
+  (pop 1)
+(pop 1)
 
-(push)
+(push 1)
   ; ∀ A, let append (xs ys : list A) = .. in
   (declare-sort A 0)
   (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
@@ -268,38 +272,38 @@
       ((mycons x xs) (mycons x (append xs ys)))
       (mynil ys))))
   ; ∀ x xs ys, (x ∷ xs) ++ ys = x ∷ xs ++ ys
-  (push)
+  (push 1)
     (assert (not
       (forall ((x A) (xs MyList) (ys MyList))
       (= (append (mycons x xs) ys) (mycons x (append xs ys))))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; Hangs: ∀ xs ys zs, (xs ++ ys) ++ zs = xs ++ (ys ++ zs)
-  (push)
+  (push 1)
     (assert (not
       (forall ((xs MyList) (ys MyList) (zs MyList))
       (= (append (append xs ys) zs) (append xs (append ys zs))))))
     ;(check-sat)
-  (pop)
+  (pop 1)
   ; Base case: ∀ ys zs, ([] ++ ys) ++ zs = [] ++ (ys ++ zs)
-  (push)
+  (push 1)
     (assert (not
       (forall ((ys MyList) (zs MyList))
       (= (append (append mynil ys) zs) (append mynil (append ys zs))))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; Inductive case: ∀ x xs ys zs,
   ;   (xs ++ ys) ++ zs = xs ++ (ys ++ zs) →
   ;   ((x ∷ xs) ++ ys) ++ zs = (x ∷ xs) ++ (ys ++ zs) →
-  (push)
+  (push 1)
     (assert (not
       (forall ((x A) (xs MyList) (ys MyList) (zs MyList)) (=>
       (= (append (append xs ys) zs) (append xs (append ys zs)))
       (= (append (append (mycons x xs) ys) zs) (append (mycons x xs) (append ys zs)))))))
   (check-sat)
-  (pop)
+  (pop 1)
   ; Can we prove the theorem given proofs of base and inductive cases?
-  (push)
+  (push 1)
     (assert (forall ((ys MyList) (zs MyList))
       (= (append (append mynil ys) zs) (append mynil (append ys zs)))))
     (assert (forall ((x A) (xs MyList) (ys MyList) (zs MyList)) (=>
@@ -310,9 +314,9 @@
       (forall ((xs MyList) (ys MyList) (zs MyList))
       (= (append (append xs ys) zs) (append xs (append ys zs))))))
     ;(check-sat)
-  (pop)
+  (pop 1)
   ; Can we prove the theorem by induction given an induction scheme for lists?
-  (push)
+  (push 1)
     ; ∀ ys zs,
     (declare-const ys MyList)
     (declare-const zs MyList)
@@ -322,22 +326,22 @@
     (assert (forall ((xs MyList))
       (= (select f xs) (= (append (append xs ys) zs) (append xs (append ys zs))))))
     ; Base case provable with this new representation of the predicate:
-    (push)
+    (push 1)
       (assert (not (select f mynil)))
       (check-sat)
-    (pop)
+    (pop 1)
     ; Inductive case too:
     ; (∀ x xs, f[xs] → f[x ∷ xs]) ∧
-    (push)
+    (push 1)
       (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
       (check-sat)
-    (pop)
+    (pop 1)
     ; But main theorem not provable (all provers hang):
     ; (∀ xs, f[xs])
-    (push)
+    (push 1)
       (assert (not (forall ((xs MyList)) (select f xs))))
       ;(check-sat)
-    (pop)
+    (pop 1)
     ; Assume standard induction principle for lists:
     ; (∀ (f : List A → Bool) xs,
     ;   f[[]] →
@@ -347,13 +351,13 @@
       (select f mynil)
       (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
       (select f xs))))
-    ; Now, cvc4 can prove ∀ xs, f[xs] (z3 hangs)
+    ; Now, cvc4 and alt-ergo can prove ∀ xs, f[xs] (z3 hangs)
     #ifndef z3
-    (push) (assert (not (forall ((xs MyList)) (select f xs)))) (check-sat) (pop)
+    (push 1) (assert (not (forall ((xs MyList)) (select f xs)))) (check-sat) (pop 1)
     #endif
-  (pop)
+  (pop 1)
   ; Could also define f as a function in this case because induction only used once:
-  (push)
+  (push 1)
     ; ∀ f ys zs,
     (declare-const ys MyList)
     (declare-const zs MyList)
@@ -361,22 +365,22 @@
     (define-fun f ((xs MyList)) Bool
       (= (append (append xs ys) zs) (append xs (append ys zs))))
     ; Base case provable with this new representation of the predicate:
-    (push)
+    (push 1)
       (assert (not (f mynil)))
       (check-sat)
-    (pop)
+    (pop 1)
     ; Inductive case too:
     ; (∀ x xs, f xs → f (x ∷ xs)) ∧
-    (push)
+    (push 1)
       (assert (not (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs))))))
       (check-sat)
-    (pop)
+    (pop 1)
     ; But main theorem not provable (all provers hang):
     ; (∀ xs, f xs)
-    (push)
+    (push 1)
       (assert (not (forall ((xs MyList)) (f xs))))
       ;(check-sat)
-    (pop)
+    (pop 1)
     ; Assume standard induction principle for lists:
     ; (∀ (f : List A → Bool) xs,
     ;   f[[]] →
@@ -386,23 +390,23 @@
       (f mynil)
       (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs))))
       (f xs))))
-    ; Now, cvc4 can prove ∀ xs, f xs (z3 hangs)
+    ; Now, cvc4 and alt-ergo can prove ∀ xs, f xs (z3 hangs)
     #ifndef z3
-    (push) (assert (not (forall ((xs MyList)) (f xs)))) (check-sat) (pop)
+    (push 1) (assert (not (forall ((xs MyList)) (f xs)))) (check-sat) (pop 1)
     #endif
-  (pop)
+  (pop 1)
   ; If just assert append-assoc theorem and check for sat,
-  ; z3 hangs and cvc4 returns unknown
+  ; z3 hangs, cvc4 and alt-ergo return unknown
   #ifndef z3
-  (push)
+  (push 1)
     (assert (forall ((xs MyList) (ys MyList) (zs MyList))
       (= (append (append xs ys) zs) (append xs (append ys zs)))))
     (check-sat)
-  (pop)
+  (pop 1)
   #endif
-(pop)
+(pop 1)
 
-(push)
+(push 1)
   ; ∀ A B C,
   (declare-sort A 0)
   (declare-sort B 0)
@@ -417,58 +421,59 @@
   (assert (forall ((f (Array A (Array B C))) (x A) (y B))
     (= (select (select f x) y) (select (uncurry f) (pair x y)))))
   ; ((∀ f, curry (uncurry f) = f) ∧ (∀ f, curry (uncurry f) = f)) ∧
-  (push)
+  (push 1)
     (assert (not
       (and
         (forall ((f (Array A (Array B C)))) (= (curry (uncurry f)) f))
         (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f)))))
-    (check-sat) ; z3 solves it, cvc4 returns unknown, cvc4-1.8 gets it
-  (pop)
+    (check-sat) ; z3 solves it, cvc4 returns unknown, cvc4-1.8 solves it, alt-ergo solves it
+  (pop 1)
   ; (∀ f, curry (uncurry f) = f) ∧
-  (push)
+  (push 1)
     (assert (not (forall ((f (Array A (Array B C)))) (= (curry (uncurry f)) f))))
     (check-sat)
-  (pop)
+  (pop 1)
   ; (∀ f, curry (uncurry f) = f) ∧
-  (push)
+  (push 1)
     (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
     (check-sat) ; z3 solves it, cvc4 returns unknown, cvc4-1.8 gets it
-  (pop)
+  (pop 1)
   ; If we state the definition of uncurry slightly differently, cvc4 (1.6) gets it
-  (push)
+  (push 1)
     (assert (forall ((f (Array A (Array B C))) (xy (Prod A B)))
       (= (select (select f (fst xy)) (snd xy)) (select (uncurry f) xy))))
     (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
     #ifndef cvc4_1_8
     (check-sat) ; cvc4-1.8 segfaults!
     #endif
-  (pop)
-  ; The eta law for pairs is not enough for cvc4
-  (push)
+  (pop 1)
+  ; Can we spell it out for cvc4-1.6 without using an alternate definition of uncurry?
+  ; The eta law for pairs is not enough:
+  (push 1)
     (assert (forall ((xy (Prod A B))) (= xy (pair (fst xy) (snd xy)))))
     (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
     #ifndef cvc4_1_8
     (check-sat) ; cvc4-1.8 emits a mysterious error message ("Datatype type not fully instantiated")
     #endif
-  (pop)
+  (pop 1)
   ; Nor is explicitly applying (uncurry (curry f)) and f to arguments
-  (push)
+  (push 1)
     (assert (not (forall ((f (Array (Prod A B) C)) (xy (Prod A B)))
       (= (select (uncurry (curry f)) xy) (select f xy)))))
     (check-sat)
-  (pop)
-  ; But if we explicitly apply (uncurry (curry f)) to pairs (x, y), then it gets it
-  (push)
+  (pop 1)
+  ; If we explicitly apply (uncurry (curry f)) to pairs (x, y), then cvc4 1.6 gets it
+  (push 1)
     (assert (not (forall ((f (Array (Prod A B) C)) (x A) (y B))
       (= (select (uncurry (curry f)) (pair x y)) (select f (pair x y))))))
     (check-sat)
-  (pop)
-  ; Even given this expanded fact as assumption, cvc4 cannot prove the theorem
-  (push)
+  (pop 1)
+  ; But then given this expanded fact as assumption, it cannot prove the theorem
+  (push 1)
     (assert (forall ((f (Array (Prod A B) C)) (x A) (y B))
       (= (select (uncurry (curry f)) (pair x y)) (select f (pair x y)))))
     (assert (not (forall ((f (Array (Prod A B) C)) (xy (Prod A B)))
       (= (select (uncurry (curry f)) xy) (select f xy)))))
     (check-sat)
-  (pop)
-(pop)
+  (pop 1)
+(pop 1)
