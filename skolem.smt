@@ -426,3 +426,62 @@
     (select f xs))))
   (check-sat) ; both solvers return unknown
 (pop)
+
+(push)
+  ; ∀ A B C,
+  (declare-sort A 0)
+  (declare-sort B 0)
+  (declare-sort C 0)
+  (declare-datatype Prod (par (D E) ((pair (fst D) (snd E)))))
+  ; let curry (f : A × B → C) : A → B → C = λ x y. f[(x, y)] in
+  ; let uncurry (f : A → B → C) : A × B → C = λ (x, y). f[x][y] in
+  (declare-fun curry ((Array (Prod A B) C)) (Array A (Array B C)))
+  (declare-fun uncurry ((Array A (Array B C))) (Array (Prod A B) C))
+  (assert (forall ((f (Array (Prod A B) C)) (x A) (y B))
+    (= (select (select (curry f) x) y) (select f (pair x y)))))
+  (assert (forall ((f (Array A (Array B C))) (x A) (y B))
+    (= (select (select f x) y) (select (uncurry f) (pair x y)))))
+  ; ((∀ f, curry (uncurry f) = f) ∧ (∀ f, curry (uncurry f) = f)) ∧
+  (push)
+    (assert (not
+      (and
+        (forall ((f (Array A (Array B C)))) (= (curry (uncurry f)) f))
+        (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f)))))
+    (check-sat) ; z3 solves it, cvc4 returns unknown
+  (pop)
+  ; (∀ f, curry (uncurry f) = f) ∧
+  (push)
+    (assert (not (forall ((f (Array A (Array B C)))) (= (curry (uncurry f)) f))))
+    (check-sat)
+  (pop)
+  ; (∀ f, curry (uncurry f) = f) ∧
+  (push)
+    (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
+    (check-sat) ; z3 solves it, cvc4 returns unknown
+  (pop)
+  ; If we state the definition of uncurry slightly different, cvc4 gets it
+  (push)
+    (assert (forall ((f (Array A (Array B C))) (xy (Prod A B)))
+      (= (select (select f (fst xy)) (snd xy)) (select (uncurry f) xy))))
+    (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
+    (check-sat)
+  (pop)
+  ; The eta law for pairs is not enough for cvc4
+  (push)
+    (assert (forall ((xy (Prod A B))) (= xy (pair (fst xy) (snd xy)))))
+    (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
+    (check-sat)
+  (pop)
+  ; Nor is explicitly applying (uncurry (curry f)) and f to arguments
+  (push)
+    (assert (not (forall ((f (Array (Prod A B) C)) (xy (Prod A B)))
+      (= (select (uncurry (curry f)) xy) (select f xy)))))
+    (check-sat)
+  (pop)
+  ; But if we explicitly apply (uncurry (curry f)) to pairs (x, y), then it gets it
+  (push)
+    (assert (not (forall ((f (Array (Prod A B) C)) (x A) (y B))
+      (= (select (uncurry (curry f)) (pair x y)) (select f (pair x y))))))
+    (check-sat)
+  (pop)
+(pop)
