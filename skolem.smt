@@ -331,41 +331,80 @@
     ;(check-sat)
   (pop)
   ; Can we prove the theorem by induction given an induction scheme for lists?
-  ; ∀ ys zs,
-  (declare-const ys MyList)
-  (declare-const zs MyList)
-  ; let f = λ xs. (xs ++ ys) ++ zs = xs ++ (ys ++ zs) in
-  ; (Because SMT is first-order, need to stuff the predicate into an Array)
-  (declare-const f (Array MyList Bool))
-  (assert (forall ((xs MyList))
-    (= (select f xs) (= (append (append xs ys) zs) (append xs (append ys zs))))))
-  ; Base case provable with this new representation of the predicate:
   (push)
-    (assert (not (select f mynil)))
-    (check-sat)
+    ; ∀ ys zs,
+    (declare-const ys MyList)
+    (declare-const zs MyList)
+    ; let f = λ xs. (xs ++ ys) ++ zs = xs ++ (ys ++ zs) in
+    ; (Because SMT is first-order, need to stuff the predicate into an Array)
+    (declare-const f (Array MyList Bool))
+    (assert (forall ((xs MyList))
+      (= (select f xs) (= (append (append xs ys) zs) (append xs (append ys zs))))))
+    ; Base case provable with this new representation of the predicate:
+    (push)
+      (assert (not (select f mynil)))
+      (check-sat)
+    (pop)
+    ; Inductive case too:
+    ; (∀ x xs, f[xs] → f[x ∷ xs]) ∧
+    (push)
+      (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
+      (check-sat)
+    (pop)
+    ; But main theorem not provable (both z3 and cvc4 hang):
+    ; (∀ xs, f[xs])
+    (push)
+      (assert (not (forall ((xs MyList)) (select f xs))))
+      ;(check-sat)
+    (pop)
+    ; Assume standard induction principle for lists:
+    ; (∀ (f : List A → Bool) xs,
+    ;   f[[]] →
+    ;   (∀ x xs, f[xs] → f[x ∷ xs]) →
+    ;   f[xs]) →
+    (assert (forall ((f (Array MyList Bool)) (xs MyList)) (=>
+      (select f mynil)
+      (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
+      (select f xs))))
+    ; Now, both solvers can prove ∀ xs, f[xs]
+    (push) (assert (not (forall ((xs MyList)) (select f xs)))) (check-sat) (pop)
   (pop)
-  ; Inductive case too:
-  ; (∀ x xs, f[xs] → f[x ∷ xs]) ∧
+  ; Could also define f as a function in this case because induction only used once:
   (push)
-    (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
-    (check-sat)
+    ; ∀ f ys zs,
+    (declare-const ys MyList)
+    (declare-const zs MyList)
+    ; f xs <=> (xs ++ ys) ++ zs = xs ++ (ys ++ zs) →
+    (define-fun f ((xs MyList)) Bool
+      (= (append (append xs ys) zs) (append xs (append ys zs))))
+    ; Base case provable with this new representation of the predicate:
+    (push)
+      (assert (not (f mynil)))
+      (check-sat)
+    (pop)
+    ; Inductive case too:
+    ; (∀ x xs, f xs → f (x ∷ xs)) ∧
+    (push)
+      (assert (not (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs))))))
+      (check-sat)
+    (pop)
+    ; But main theorem not provable (both z3 and cvc4 hang):
+    ; (∀ xs, f xs)
+    (push)
+      (assert (not (forall ((xs MyList)) (f xs))))
+      ;(check-sat)
+    (pop)
+    ; Assume standard induction principle for lists:
+    ; (∀ (f : List A → Bool) xs,
+    ;   f[[]] →
+    ;   (∀ x xs, f[xs] → f[x ∷ xs]) →
+    ;   f[xs]) →
+    (assert (forall ((xs MyList)) (=>
+      (f mynil)
+      (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs))))
+      (f xs))))
+    ; Now, both solvers can prove ∀ xs, f xs
+    (push) (assert (not (forall ((xs MyList)) (f xs)))) (check-sat) (pop)
   (pop)
-  ; But main theorem not provable (both z3 and cvc4 hang):
-  ; (∀ xs, f[xs])
-  (push)
-    (assert (not (forall ((xs MyList)) (select f xs))))
-    ;(check-sat)
-  (pop)
-  ; Assume standard induction principle for lists:
-  ; (∀ (f : List A → Bool) xs,
-  ;   f[[]] →
-  ;   (∀ x xs, f[xs] → f[x ∷ xs]) →
-  ;   f[xs]) →
-  (assert (forall ((f (Array MyList Bool)) (xs MyList)) (=>
-    (select f mynil)
-    (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
-    (select f xs))))
-  ; Now, both solvers can prove ∀ xs, f[xs]
-  (push) (assert (not (forall ((xs MyList)) (select f xs)))) (check-sat) (pop)
 (pop)
 
