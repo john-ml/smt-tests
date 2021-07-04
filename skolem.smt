@@ -266,6 +266,21 @@
 #endif
 (pop)
 
+; Can we prove the induction scheme for lists?
+; ∀ A (f : List A → bool),
+(push)
+(declare-sort A 0)
+(declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
+(declare-fun f (MyList) Bool)
+; f [] →
+(assert (f mynil))
+; (∀ x xs, f xs → f (x ∷ xs)) →
+(assert (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs)))))
+; z3 hangs, cvc4 returns unknown: ∀ xs, f xs
+(assert (not (forall ((xs MyList)) (f xs))))
+;(check-sat)
+(pop)
+
 (push)
 ; ∀ A, let append (xs ys : list A) = .. in
 (declare-sort A 0)
@@ -274,10 +289,91 @@
   (match xs (
     ((mycons x xs) (mycons x (append xs ys)))
     (mynil ys))))
-; ∀ x xs ys, append (x ∷ xs) ys = x ∷ append xs ys
+; ∀ x xs ys, (x ∷ xs) ++ ys = x ∷ xs ++ ys
+(push)
 (assert (not
   (forall ((x A) (xs MyList) (ys MyList))
   (= (append (mycons x xs) ys) (mycons x (append xs ys))))))
 (check-sat)
+(pop)
+; Hangs: ∀ xs ys zs, (xs ++ ys) ++ zs = xs ++ (ys ++ zs)
+(push)
+(assert (not
+  (forall ((xs MyList) (ys MyList) (zs MyList))
+  (= (append (append xs ys) zs) (append xs (append ys zs))))))
+; (check-sat)
+(pop)
+; Base case: ∀ ys zs, ([] ++ ys) ++ zs = [] ++ (ys ++ zs)
+(push)
+(assert (not
+  (forall ((ys MyList) (zs MyList))
+  (= (append (append mynil ys) zs) (append mynil (append ys zs))))))
+(check-sat)
+(pop)
+; Inductive case: ∀ x xs ys zs,
+;   (xs ++ ys) ++ zs = xs ++ (ys ++ zs) →
+;   ((x ∷ xs) ++ ys) ++ zs = (x ∷ xs) ++ (ys ++ zs) →
+(push)
+(assert (not
+  (forall ((x A) (xs MyList) (ys MyList) (zs MyList)) (=>
+  (= (append (append xs ys) zs) (append xs (append ys zs)))
+  (= (append (append (mycons x xs) ys) zs) (append (mycons x xs) (append ys zs)))))))
+(check-sat)
+(pop)
+; Can we prove the theorem given proofs of base and inductive cases?
+(push)
+(assert (forall ((ys MyList) (zs MyList))
+  (= (append (append mynil ys) zs) (append mynil (append ys zs)))))
+(assert (forall ((x A) (xs MyList) (ys MyList) (zs MyList)) (=>
+  (= (append (append xs ys) zs) (append xs (append ys zs)))
+  (= (append (append (mycons x xs) ys) zs) (append (mycons x xs) (append ys zs))))))
+; Both z3 and cvc4 hang.
+(assert (not
+  (forall ((xs MyList) (ys MyList) (zs MyList))
+  (= (append (append xs ys) zs) (append xs (append ys zs))))))
+;(check-sat)
+(pop)
+; Can we prove the theorem by induction given an induction scheme for lists?
+; ∀ ys zs,
+(declare-const ys MyList)
+(declare-const zs MyList)
+; let f = λ xs. (xs ++ ys) ++ zs = xs ++ (ys ++ zs) in
+; (Because SMT is first-order, need to stuff the predicate into an Array)
+(declare-const f (Array MyList Bool))
+(assert (forall ((xs MyList))
+  (= (select f xs) (= (append (append xs ys) zs) (append xs (append ys zs))))))
+; Base case provable with this new representation of the predicate:
+(push)
+  (assert (not (select f mynil)))
+  (check-sat)
+(pop)
+; Inductive case too:
+; (∀ x xs, f[xs] → f[x ∷ xs]) ∧
+(push)
+  (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
+  (check-sat)
+(pop)
+;; But main theorem not provable (both z3 and cvc4 hang):
+;; (∀ xs, f[xs])
+;(push)
+;(declare-const xs MyList)
+;(assert (not (select f xs)))
+;;(check-sat)
+;(pop)
+;; Assume standard induction principle for lists:
+;; (∀ (f : List A → Bool) xs,
+;;   f[[]] →
+;;   (∀ x xs, f[xs] → f[x ∷ xs]) →
+;;   f[xs]) →
+;(assert (forall ((f (Array MyList Bool)) (xs MyList)) (=>
+;  (select f mynil)
+;  (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
+;  (select f xs))))
+;; Now, both solvers can prove ∀ xs, f xs
+;(push)
+;(declare-const xs MyList)
+;(assert (not (select f xs)))
+;(check-sat)
+;(pop)
 (pop)
 
