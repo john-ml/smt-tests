@@ -1,4 +1,4 @@
-(set-option :produce-proofs true)
+;(set-option :produce-proofs true)
 
 (declare-datatype Prod (par (A B) ((pair (fst A) (snd B)))))
 
@@ -46,17 +46,11 @@
   (bstep rho (Let x e1 e2) b2)
 )))
 
-; To prove something like
-;   ∀ ρ b₁ b₂, ρ ⊢ And (LBool b₁) (LBool b₂) ⇓ (b₁ && b₂)
-; You can't use the usual trick where you assert
-;   ¬ ρ ⊢ And (LBool b₁) (LBool b₂) ⇓ (b₁ && b₂)
-; with ρ, b₁, b₂ free and check for unsat.
-; This is logically equivalent but leaves the CHC fragment because ρ, b₁, and b₂ aren't relations.
-; So the solver hangs.
+; z3 hangs: ∀ ρ b₁ b₂, ρ ⊢ And (LBool b₁) (LBool b₂) ⇓ (b₁ && b₂)
 (push)
 (declare-const b1 Bool)
 (declare-const b2 Bool)
 (assert (not (bstep nil (And (LBool b1) (LBool b2)) (and b1 b2))))
-;(check-sat)
+(check-sat)
 (pop)
 
