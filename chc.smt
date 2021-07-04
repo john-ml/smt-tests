@@ -1,0 +1,6 @@
+(declare-fun R (Int Int) Bool)
+(declare-const x Int)
+(assert (forall ((x Int) (y Int)) (=> (R x y) (R y x))))
+(assert (R x (+ x 1)))
+(check-sat)
+(get-model)
