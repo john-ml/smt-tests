@@ -551,7 +551,7 @@
       (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
       (check-sat)
     (pop 1)
-    ; To show the inductive case, first unfold (select f) and simplify the call to (++):
+    ; Now, simplify the call to (++):
     (push 1)
       (assert (forall ((x A) (y A) (xs MyList) (ys MyList)) (=>
         (= (contains x (append xs ys)) (or (contains x xs) (contains x ys)))
