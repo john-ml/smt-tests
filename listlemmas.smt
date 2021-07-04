@@ -27,3 +27,64 @@
 (assert (= (reverse (insert 1 (insert 2 (insert 3 nil)))) (insert 3 (insert 2 (insert 1 nil)))))
 (check-sat)
 (pop)
+
+; Bizarrely, this hangs
+(push)
+(assert (forall ((x Int) (xs (List Int)) (ys (List Int)))
+  (= (append (insert x xs) ys) (insert x (append xs ys)))))
+;(check-sat)
+(pop)
+
+(push)
+(declare-const a Int)
+(declare-const b Int)
+(declare-const c Int)
+(assert (= (append (insert 1 (insert 2 nil)) (insert 3 nil)) (insert a (insert b (insert c nil)))))
+(check-sat)
+(get-model)
+(pop)
+
+(define-fun-rec length ((xs (List Int))) Int
+  (match xs (
+    ((insert x xs) (+ 1 (length xs)))
+    (nil 0))))
+
+(push)
+(assert (forall ((xs (List Int)) (ys (List Int)))
+  (= (length (append xs ys)) (+ (length xs) (length ys)))))
+(check-sat)
+(pop)
+
+(push)
+(assert (forall ((xs (List Int)) (ys (List Int)))
+  (= (length (append xs ys)) (length (append ys xs)))))
+(check-sat)
+(pop)
+
+(push)
+(assert (forall ((xs (List Int)) (ys (List Int)))
+  (= (length (reverse xs)) (length xs))))
+(check-sat)
+(pop)
+
+; Returns unknown...
+(push)
+(assert (forall ((xs (List Int)) (ys (List Int)))
+  (= (reverse (append xs ys)) (append (reverse ys) (reverse xs)))))
+(check-sat)
+(pop)
+
+; But if you assert the base and inductive cases, it solves it!
+(push)
+(assert (forall ((ys (List Int)))
+  (= (reverse (append nil ys)) (append (reverse nil) (reverse ys)))))
+(check-sat) ; but you need (check-sat) for each auxiliary lemma to guide it; otherwise, it hangs
+(assert (forall ((x Int) (xs (List Int)) (ys (List Int)))
+  (or
+    (not (= (reverse (append xs ys)) (append (reverse xs) (reverse ys))))
+    (= (reverse (append (insert x xs) ys)) (append (reverse (insert x xs)) (reverse ys))))))
+(check-sat)
+(assert (forall ((xs (List Int)) (ys (List Int)))
+  (= (reverse (append xs ys)) (append (reverse xs) (reverse ys)))))
+(check-sat)
+(pop)

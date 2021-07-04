@@ -16,9 +16,10 @@
 (declare-const xs (List Int))
 ; Times out
 ; (assert (not (= (append xs nil) xs)))
-(assert (not (= (append nil xs) xs)))
-(check-sat)
-(get-proof)
+; Works, but proof is pretty trivial
+; (assert (not (= (append nil xs) xs)))
+; (check-sat)
+; (get-proof)
 (pop)
 
 ; Interestingly, if I first assert (∀ xs, xs ++ [] == xs) (which z3 can somehow prove),
