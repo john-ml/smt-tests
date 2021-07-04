@@ -264,7 +264,7 @@
 (pop 1)
 
 (push 1)
-  ; ∀ A, let append (xs ys : list A) = .. in
+  ; ∀ A, let append (xs ys : list A) = ‥ in
   (declare-sort A 0)
   (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
   (define-fun-rec append ((xs MyList) (ys MyList)) MyList
@@ -476,4 +476,161 @@
       (= (select (uncurry (curry f)) xy) (select f xy)))))
     (check-sat)
   (pop 1)
+(pop 1)
+
+(push 1)
+  ; ∀ A,
+  (declare-sort A 0)
+  (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
+  ; ∀ (∈),
+  (declare-fun contains (A MyList) Bool)
+  ; (∀ x, x ∉ []) →
+  (assert (forall ((x A)) (not (contains x mynil))))
+  ; (∀ x xs, x ∈ x ∷ xs) →
+  (assert (forall ((x A) (xs MyList)) (contains x (mycons x xs))))
+  ; (∀ x y xs, x ≠ y → x ∈ xs → x ∈ y ∷ xs) →
+  (assert (forall ((x A) (y A) (xs MyList)) (=>
+    (distinct x y)
+    (contains x xs)
+    (contains x (mycons y xs)))))
+  ; (∀ x, x ∈ [x]) ∧
+  (push 1)
+    (assert (not (forall ((x A)) (contains x (mycons x mynil)))))
+    (check-sat)
+  (pop 1)
+  ; (∀ x y, y ≠ x → x ∈ [y, y, x]) ∧
+  (push 1)
+    (assert (not
+      (forall ((x A) (y A)) (=>
+      (distinct x y)
+      (contains x (mycons y (mycons y (mycons x mynil))))))))
+    (check-sat)
+  (pop 1)
+  ; let (++)  = ‥ in
+  (define-fun-rec append ((xs MyList) (ys MyList)) MyList
+    (match xs (
+      ((mycons x xs) (mycons x (append xs ys)))
+      (mynil ys))))
+  ; Hangs: (∀ x xs ys, x ∈ xs ++ ys <=> x ∈ xs ∨ x ∈ ys)
+  (push 1)
+    (assert (not
+      (forall ((x A) (xs MyList) (ys MyList))
+      (= (contains x (append xs ys)) (or (contains x xs) (contains x ys))))))
+    ;(check-sat)
+  (pop 1)
+  ; Induction principle for lists
+  (assert (forall ((f (Array MyList Bool)) (xs MyList)) (=>
+    (select f mynil)
+    (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
+    (select f xs))))
+  ; Proof by induction:
+  (push 1)
+    ; Motive:
+    (declare-const f (Array MyList Bool))
+    (declare-const x A)
+    (declare-const ys MyList)
+    (assert (forall ((xs MyList))
+      (= (select f xs)
+        (= (contains x (append xs ys)) (or (contains x xs) (contains x ys))))))
+    ; Base case is easy:
+    (push 1) (assert (not (select f mynil))) (check-sat) (pop 1)
+    ; So, to show (∀ xs, f[xs]), it suffices to show the inductive case
+    ;   (∀ x xs, f[xs] → f[x ∷ xs])
+    (push 1)
+      (assert (forall ((x A) (xs MyList))
+        (=> (select f xs) (select f (mycons x xs)))))
+      (assert (not (forall ((xs MyList)) (select f xs))))
+      (check-sat)
+    (pop 1)
+    ; To show the inductive case, first unfold (select f):
+    (push 1)
+      (assert (forall ((x A) (y A) (xs MyList) (ys MyList)) (=>
+        (= (contains x (append xs ys)) (or (contains x xs) (contains x ys)))
+        (= (contains x (append (mycons y xs) ys))
+           (or (contains x (mycons y xs)) (contains x ys))))))
+      (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
+      (check-sat)
+    (pop 1)
+    ; To show the inductive case, first unfold (select f) and simplify the call to (++):
+    (push 1)
+      (assert (forall ((x A) (y A) (xs MyList) (ys MyList)) (=>
+        (= (contains x (append xs ys)) (or (contains x xs) (contains x ys)))
+        (= (contains x (mycons y (append xs ys)))
+           (or (contains x (mycons y xs)) (contains x ys))))))
+      (assert (not (forall ((x A) (y A) (xs MyList) (ys MyList)) (=>
+        (= (contains x (append xs ys)) (or (contains x xs) (contains x ys)))
+        (= (contains x (append (mycons y xs) ys))
+           (or (contains x (mycons y xs)) (contains x ys)))))))
+      (check-sat)
+    (pop 1)
+    ; We would like to show that ∀ x y xs, x ∈ y ∷ xs <=> x = y ∨ x ∈ xs
+    ; but solvers only see backward direction:
+    (push 1)
+      (assert (not
+        (forall ((x A) (y A) (xs MyList))
+        (=> (or (= x y) (contains x xs)) (contains x (mycons y xs))))))
+      (check-sat)
+    (pop 1)
+    ; I guess this is because there is no way to invert the proof rules for (∈).
+    ; Define one:
+    ;   (∀ x xs,
+    ;    x ∈ xs →
+    ;    (∃ y ys, xs = y ∷ ys ∧ x = y) ∨
+    ;    (∃ y ys, xs = y ∷ ys ∧ x ≠ y ∧ x ∈ ys))
+    (assert (forall ((x A) (xs MyList)) (=> (contains x xs) (or
+      (exists ((y A) (ys MyList)) (and (= xs (mycons y ys)) (= x y)))
+      (exists ((y A) (ys MyList)) (and
+        (= xs (mycons y ys))
+        (distinct x y)
+        (contains x ys)))))))
+    ; Now can prove the lemma:
+    (push 1)
+      (assert (not
+        (forall ((x A) (y A) (xs MyList))
+        (= (or (= x y) (contains x xs)) (contains x (mycons y xs))))))
+      (check-sat)
+    (pop 1)
+  (pop 1)
+(pop 1)
+
+; In fact, with this extra fact, solvers can prove the entire theorem on their own as long as the
+; induction principle and motive are in scope. But, it takes a bit longer than usual
+(push 1)
+  (declare-sort A 0)
+  (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
+  ; Proof rules for (∈)
+  (declare-fun contains (A MyList) Bool)
+  (assert (forall ((x A)) (not (contains x mynil))))
+  (assert (forall ((x A) (xs MyList)) (contains x (mycons x xs))))
+  (assert (forall ((x A) (y A) (xs MyList)) (=>
+    (distinct x y)
+    (contains x xs)
+    (contains x (mycons y xs)))))
+  ; Inversion
+  (assert (forall ((x A) (xs MyList)) (=> (contains x xs) (or
+    (exists ((y A) (ys MyList)) (and (= xs (mycons y ys)) (= x y)))
+    (exists ((y A) (ys MyList)) (and
+      (= xs (mycons y ys))
+      (distinct x y)
+      (contains x ys)))))))
+  ; let (++)  = ‥ in
+  (define-fun-rec append ((xs MyList) (ys MyList)) MyList
+    (match xs (
+      ((mycons x xs) (mycons x (append xs ys)))
+      (mynil ys))))
+  ; Induction principle
+  (assert (forall ((f (Array MyList Bool)) (xs MyList)) (=>
+    (select f mynil)
+    (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
+    (select f xs))))
+  ; Motive
+  (declare-const f (Array MyList Bool))
+  (declare-const x A)
+  (declare-const ys MyList)
+  ; Proof
+  (assert (forall ((xs MyList))
+    (= (select f xs)
+      (= (contains x (append xs ys)) (or (contains x xs) (contains x ys))))))
+  (assert (not (forall ((xs MyList)) (select f xs))))
+  (check-sat)
 (pop 1)
