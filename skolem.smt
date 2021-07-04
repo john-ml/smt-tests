@@ -336,7 +336,7 @@
       (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
       (check-sat)
     (pop)
-    ; But main theorem not provable (both z3 and cvc4 hang):
+    ; But main theorem not provable (all provers hang):
     ; (∀ xs, f[xs])
     (push)
       (assert (not (forall ((xs MyList)) (select f xs))))
@@ -351,7 +351,7 @@
       (select f mynil)
       (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
       (select f xs))))
-    ; Now, both solvers can prove ∀ xs, f[xs]
+    ; Now, all solvers can prove ∀ xs, f[xs]
     (push) (assert (not (forall ((xs MyList)) (select f xs)))) (check-sat) (pop)
   (pop)
   ; Could also define f as a function in this case because induction only used once:
@@ -373,7 +373,7 @@
       (assert (not (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs))))))
       (check-sat)
     (pop)
-    ; But main theorem not provable (both z3 and cvc4 hang):
+    ; But main theorem not provable (all provers hang):
     ; (∀ xs, f xs)
     (push)
       (assert (not (forall ((xs MyList)) (f xs))))
@@ -388,7 +388,7 @@
       (f mynil)
       (forall ((x A) (xs MyList)) (=> (f xs) (f (mycons x xs))))
       (f xs))))
-    ; Now, both solvers can prove ∀ xs, f xs
+    ; Now, all solvers can prove ∀ xs, f xs
     (push) (assert (not (forall ((xs MyList)) (f xs)))) (check-sat) (pop)
   (pop)
   ; If just assert append-assoc theorem and check for sat,
@@ -424,7 +424,7 @@
     (select f mynil)
     (forall ((x Int) (xs IntList)) (=> (select f xs) (select f (mycons x xs))))
     (select f xs))))
-  (check-sat) ; both solvers return unknown
+  (check-sat) ; all solvers return unknown
 (pop)
 
 (push)
@@ -447,7 +447,7 @@
       (and
         (forall ((f (Array A (Array B C)))) (= (curry (uncurry f)) f))
         (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f)))))
-    (check-sat) ; z3 solves it, cvc4 returns unknown
+    (check-sat) ; z3 solves it, cvc4 returns unknown, cvc4-1.8 gets it
   (pop)
   ; (∀ f, curry (uncurry f) = f) ∧
   (push)
@@ -457,20 +457,24 @@
   ; (∀ f, curry (uncurry f) = f) ∧
   (push)
     (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
-    (check-sat) ; z3 solves it, cvc4 returns unknown
+    (check-sat) ; z3 solves it, cvc4 returns unknown, cvc4-1.8 gets it
   (pop)
-  ; If we state the definition of uncurry slightly different, cvc4 gets it
+  ; If we state the definition of uncurry slightly differently, cvc4 gets it
   (push)
     (assert (forall ((f (Array A (Array B C))) (xy (Prod A B)))
       (= (select (select f (fst xy)) (snd xy)) (select (uncurry f) xy))))
     (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
-    (check-sat)
+    #ifndef cvc4_1_8
+    (check-sat) ; cvc4-1.8 segfaults!
+    #endif
   (pop)
   ; The eta law for pairs is not enough for cvc4
   (push)
     (assert (forall ((xy (Prod A B))) (= xy (pair (fst xy) (snd xy)))))
     (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
-    (check-sat)
+    #ifndef cvc4_1_8
+    (check-sat) ; cvc4-1.8 emits a mysterious error message ("Datatype type not fully instantiated")
+    #endif
   (pop)
   ; Nor is explicitly applying (uncurry (curry f)) and f to arguments
   (push)
@@ -482,6 +486,14 @@
   (push)
     (assert (not (forall ((f (Array (Prod A B) C)) (x A) (y B))
       (= (select (uncurry (curry f)) (pair x y)) (select f (pair x y))))))
+    (check-sat)
+  (pop)
+  ; Even given this expanded fact as assumption, cvc4 cannot prove the theorem
+  (push)
+    (assert (forall ((f (Array (Prod A B) C)) (x A) (y B))
+      (= (select (uncurry (curry f)) (pair x y)) (select f (pair x y)))))
+    (assert (not (forall ((f (Array (Prod A B) C)) (xy (Prod A B)))
+      (= (select (uncurry (curry f)) xy) (select f xy)))))
     (check-sat)
   (pop)
 (pop)

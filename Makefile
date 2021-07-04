@@ -1,4 +1,4 @@
-all: z3 cvc4
+all: z3 cvc4 cvc5
 
 clean:
 	rm *.tmp
@@ -6,6 +6,10 @@ clean:
 cvc4:
 	cpp skolem.smt | grep -v '^#' > skolem.smt.tmp && \
           cvc4 --lang smt --incremental skolem.smt.tmp && rm skolem.smt.tmp
+
+cvc5:
+	cpp -D cvc4_1_8 skolem.smt | grep -v '^#' > skolem.smt.tmp && \
+          cvc4-1.8 --lang smt --incremental skolem.smt.tmp && rm skolem.smt.tmp
 
 z3:
 	cpp -D z3 skolem.smt | grep -v '^#' > skolem.smt.tmp && \
