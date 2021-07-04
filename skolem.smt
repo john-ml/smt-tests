@@ -1,3 +1,5 @@
+(set-logic ALL)
+
 ; ∀ x y, ¬ (x < y < x)
 (push)
 (declare-const x Int)
@@ -238,5 +240,21 @@
 (assert (not (forall ((s (MySet Int)) (t (MySet Int)) (r (MySet Int)))
   (= (disjoint (cup s t) r) (and (disjoint s r) (disjoint t r))))))
 (check-sat)
+(pop)
+; (∀ r s t u v, (r ∪ s ∪ t) # (u ∪ v) <=> r#u ∧ r#v ∧ s#u ∧ s#v ∧ t#u ∧ t#v)
+; cvc4 can solve this but z3 segfaults
+(push)
+(assert (not (forall
+  ((r (MySet Int)) (s (MySet Int)) (t (MySet Int)) (u (MySet Int)) (v (MySet Int)))
+  (= (disjoint (cup (cup r s) t) (cup u v))
+     (and
+       (disjoint r u)
+       (disjoint r v)
+       (disjoint s u)
+       (disjoint s v)
+       (disjoint t u)
+       (disjoint t v)
+)))))
+;(check-sat)
 (pop)
 (pop)

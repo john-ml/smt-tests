@@ -1,6 +1,8 @@
 all:
-	z3 skolem.smt
 	cvc4 --lang smt --incremental skolem.smt
+
+z3:
+	z3 skolem.smt
 
 every-file-z3:
 	for FILE in *.smt; do echo ---------- $$FILE ----------; z3 $$FILE; done
