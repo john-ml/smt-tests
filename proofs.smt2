@@ -246,7 +246,7 @@
     (check-sat)
   (pop 1)
   ; (∀ r s t u v, (r ∪ s ∪ t) # (u ∪ v) <=> r#u ∧ r#v ∧ s#u ∧ s#v ∧ t#u ∧ t#v)
-  ; cvc4 can solve this but z3 returns unknown
+  ; cvc4 and alt-ergo can solve this but z3 returns unknown
   (push 1)
     (assert (not
       (forall ((r (MySet Int)) (s (MySet Int)) (t (MySet Int)) (u (MySet Int)) (v (MySet Int)))
@@ -436,9 +436,9 @@
   ; (∀ f, curry (uncurry f) = f) ∧
   (push 1)
     (assert (not (forall ((f (Array (Prod A B) C))) (= (uncurry (curry f)) f))))
-    (check-sat) ; z3 solves it, cvc4 returns unknown, cvc4-1.8 gets it
+    (check-sat) ; z3 solves it, cvc4 returns unknown, cvc4-1.8 solves it
   (pop 1)
-  ; If we state the definition of uncurry slightly differently, cvc4 (1.6) gets it
+  ; If we state the definition of uncurry slightly differently, cvc4 (1.6) solves it
   (push 1)
     (assert (forall ((f (Array A (Array B C))) (xy (Prod A B)))
       (= (select (select f (fst xy)) (snd xy)) (select (uncurry f) xy))))
@@ -462,7 +462,7 @@
       (= (select (uncurry (curry f)) xy) (select f xy)))))
     (check-sat)
   (pop 1)
-  ; If we explicitly apply (uncurry (curry f)) to pairs (x, y), then cvc4 1.6 gets it
+  ; If we explicitly apply (uncurry (curry f)) to pairs (x, y), then cvc4 1.6 solves it
   (push 1)
     (assert (not (forall ((f (Array (Prod A B) C)) (x A) (y B))
       (= (select (uncurry (curry f)) (pair x y)) (select f (pair x y))))))
