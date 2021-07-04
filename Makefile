@@ -4,24 +4,18 @@ clean:
 	rm *.tmp
 
 cvc4:
-	cpp skolem.smt | grep -v '^#' > skolem.smt.tmp && \
-          cvc4 --lang smt --incremental skolem.smt.tmp && rm skolem.smt.tmp
+	cpp skolem.smt2 | grep -v '^#' > skolem.smt2.tmp && \
+          cvc4 --lang smt --incremental skolem.smt2.tmp && rm skolem.smt2.tmp
 
 cvc5:
-	cpp -D cvc4_1_8 skolem.smt | grep -v '^#' > skolem.smt.tmp && \
-          cvc4-1.8 --lang smt --incremental skolem.smt.tmp && rm skolem.smt.tmp
+	cpp -D cvc4_1_8 skolem.smt2 | grep -v '^#' > skolem.smt2.tmp && \
+          cvc4-1.8 --lang smt --incremental skolem.smt2.tmp && rm skolem.smt2.tmp
 
 z3:
-	cpp -D z3 skolem.smt | grep -v '^#' > skolem.smt.tmp && \
-          z3 skolem.smt.tmp && rm skolem.smt.tmp
+	cpp -D z3 skolem.smt2 | grep -v '^#' > skolem.smt2.tmp && \
+          z3 skolem.smt2.tmp && rm skolem.smt2.tmp
 
 every-file-z3:
-	for FILE in *.smt; do echo ---------- $$FILE ----------; \
+	for FILE in *.smt2; do echo ---------- $$FILE ----------; \
           cpp -D z3 $$FILE | grep -v '^#' > $$FILE.tmp && \
           z3 $$FILE.tmp && rm $$FILE.tmp; done
-
-every-file-cvc4:
-	for FILE in *.smt; do echo ---------- $$FILE ----------; \
-          cpp $$FILE | grep -v '^#' > $$FILE.tmp && \
-          cvc4 --lang smt --incremental $$FILE.tmp && \
-          rm $$FILE.tmp; done
