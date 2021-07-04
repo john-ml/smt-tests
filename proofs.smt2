@@ -600,7 +600,6 @@
   (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
   ; Proof rules for (∈)
   (declare-fun contains (A MyList) Bool)
-  (assert (forall ((x A)) (not (contains x mynil))))
   (assert (forall ((x A) (xs MyList)) (contains x (mycons x xs))))
   (assert (forall ((x A) (y A) (xs MyList)) (=>
     (distinct x y)
