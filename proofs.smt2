@@ -478,6 +478,7 @@
   (pop 1)
 (pop 1)
 
+; Inductively defined propositions
 (push 1)
   ; ∀ A,
   (declare-sort A 0)
@@ -506,7 +507,7 @@
       (contains x (mycons y (mycons y (mycons x mynil))))))))
     (check-sat)
   (pop 1)
-  ; let (++)  = ‥ in
+  ; let (++) = ‥ in
   (define-fun-rec append ((xs MyList) (ys MyList)) MyList
     (match xs (
       ((mycons x xs) (mycons x (append xs ys)))
@@ -593,7 +594,7 @@
   (pop 1)
 (pop 1)
 
-; In fact, with this extra fact, solvers can prove the entire theorem on their own as long as the
+; In fact, with inversion, solvers can prove the entire theorem on their own as long as the
 ; induction principle and motive are in scope. But, it takes a bit longer than usual
 (push 1)
   (declare-sort A 0)
@@ -612,7 +613,7 @@
       (= xs (mycons y ys))
       (distinct x y)
       (contains x ys)))))))
-  ; let (++)  = ‥ in
+  ; let (++) = ‥ in
   (define-fun-rec append ((xs MyList) (ys MyList)) MyList
     (match xs (
       ((mycons x xs) (mycons x (append xs ys)))
@@ -622,7 +623,6 @@
     (select f mynil)
     (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))
     (select f xs))))
-  ; Proof
   (push 1)
     ; Motive
     (declare-const f (Array MyList Bool))
@@ -631,18 +631,25 @@
     (assert (forall ((xs MyList))
       (= (select f xs)
         (= (contains x (append xs ys)) (or (contains x xs) (contains x ys))))))
+    ; Proof
     (assert (not (forall ((xs MyList)) (select f xs))))
     (check-sat)
   (pop 1)
   ; We can even stuff the ∀s inside f and the proof will still go through:
   ; (alt-ergo starts to get pretty slow though)
+  (declare-const f (Array MyList Bool))
+  (assert (forall ((xs MyList))
+    (= (select f xs)
+      (forall ((x A) (ys MyList))
+      (= (contains x (append xs ys)) (or (contains x xs) (contains x ys)))))))
   (push 1)
-    (declare-const f (Array MyList Bool))
-    (assert (forall ((xs MyList))
-      (= (select f xs)
-        (forall ((x A) (ys MyList))
-        (= (contains x (append xs ys)) (or (contains x xs) (contains x ys)))))))
     (assert (not (forall ((xs MyList)) (select f xs))))
+    (check-sat)
+  (pop 1)
+  ; If we do base and inductive cases separately, proof goes through much faster
+  (push 1) (assert (not (select f mynil))) (check-sat) (pop 1)
+  (push 1)
+    (assert (not (forall ((x A) (xs MyList)) (=> (select f xs) (select f (mycons x xs))))))
     (check-sat)
   (pop 1)
 (pop 1)
