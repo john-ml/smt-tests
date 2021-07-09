@@ -123,3 +123,12 @@
     (push 1) (assert (not (forall ((xs MyList)) (select f xs)))) (check-sat) (pop 1)
   (pop 1)
 (pop 1)
+
+(push 1)
+  (declare-sort A 0)
+  (declare-datatype MyList ((mynil) (mycons (head A) (tail MyList))))
+  (declare-const xs MyList)
+  (assert (distinct xs mynil))
+  (assert (not (exists ((x A) (xs- MyList)) (= xs (mycons x xs-)))))
+  (check-sat) ; z3, alt-ergo say unsat; cvc4 says unknown
+(pop 1)

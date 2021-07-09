@@ -653,3 +653,16 @@
     (check-sat)
   (pop 1)
 (pop 1)
+
+; Even and odd
+(push 1)
+  ; ∀ A,
+  (declare-datatype Nat ((zero) (succ (pred Nat))))
+  (declare-fun even (Nat) Bool)
+  (declare-fun odd (Nat) Bool)
+  (assert (= (even zero) true))
+  (assert (forall ((n Nat)) (= (even (succ n)) (odd n))))
+  (assert (= (odd zero) false))
+  (assert (forall ((n Nat)) (= (odd (succ n)) (odd n))))
+  (assert (not (even (succ (succ (succ (succ (succ (succ zero)))))))))
+(pop 1)
